@@ -100,6 +100,7 @@ function createLiveSession(ai, options) {
     const {model, config, streamHandler} = options;
 
     let fullResponse = '';
+    let isComplete = false;
     let responseResolver, responseRejecter;
     const responsePromise = new Promise((resolve, reject) => {
         responseResolver = resolve;
@@ -123,6 +124,7 @@ function createLiveSession(ai, options) {
                 }
 
                 if (message.serverContent?.turnComplete) {
+                    isComplete = true;
                     if (streamHandler) {
                         streamHandler.onComplete();
                     }
@@ -135,6 +137,9 @@ function createLiveSession(ai, options) {
             },
             onclose: (e) => {
                 console.log('[Live API] Connection closed:', e.reason);
+                if (!isComplete) {
+                    responseRejecter(new Error(e.reason || 'Connection closed unexpectedly'));
+                }
             }
         }
     });
