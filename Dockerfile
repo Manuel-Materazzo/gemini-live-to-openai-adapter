@@ -8,9 +8,5 @@ RUN npm i
 
 COPY . .
 
-ENV NODE_PATH=./build
-
-RUN npm run build
-
 EXPOSE 3000
 CMD [ "node", "index.js" ]
