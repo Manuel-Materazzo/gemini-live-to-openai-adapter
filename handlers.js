@@ -188,12 +188,26 @@ function setupStreamingHeaders(res) {
 
 /**
  * Handle OpenAI-compatible chat completions
- * @param {Object} ai - GoogleGenAI instance
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-export async function handleChatCompletions(ai, req, res) {
+export async function handleChatCompletions(req, res) {
     try {
+        // Extract API key from Bearer token
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                error: {
+                    message: 'Authorization header with Bearer token required',
+                    type: 'authentication_error'
+                }
+            });
+        }
+        const apiKey = authHeader.substring(7); // Remove 'Bearer '
+
+        // Create GoogleGenAI instance with the API key
+        const ai = new GoogleGenAI({apiKey: apiKey});
+
         const {messages, model = DEFAULT_MODEL, stream = false, temperature, max_tokens} = req.body;
 
         // Validate request

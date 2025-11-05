@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import {GoogleGenAI} from '@google/genai';
 import dotenv from 'dotenv';
 import {handleChatCompletions} from './handlers.js';
 import {DEFAULT_PORT, SERVICE_NAME} from './config.js';
@@ -14,17 +13,9 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || DEFAULT_PORT;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-if (!GEMINI_API_KEY) {
-    console.error('ERROR: GEMINI_API_KEY environment variable not set');
-    process.exit(1);
-}
-
-const ai = new GoogleGenAI({apiKey: GEMINI_API_KEY});
 
 // OpenAI-compatible chat completions endpoint
-app.post('/v1/chat/completions', (req, res) => handleChatCompletions(ai, req, res));
+app.post('/v1/chat/completions', (req, res) => handleChatCompletions(req, res));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
