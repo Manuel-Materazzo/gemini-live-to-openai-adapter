@@ -122,7 +122,7 @@ export function ipRestrictionMiddleware(req, res, next) {
 }
 
 /**
- * Check if an IP is within a CIDR range (basic implementation)
+ * Check if an IP is within a CIDR range
  * @param {string} ip - IP address to check
  * @param {string} cidr - CIDR notation (e.g., 192.168.1.0/24)
  * @returns {boolean} True if IP is in range
@@ -132,15 +132,23 @@ function isIPInCIDR(ip, cidr) {
         return false; // Not CIDR
     }
 
-    const [network, prefix] = cidr.split('/');
-    const prefixLen = Number.parseInt(prefix, 10);
+    const [networkStr, prefixStr] = cidr.split('/');
+    const prefix = Number.parseInt(prefixStr, 10);
 
-    // For simplicity, support IPv4 only and basic prefixes
-    if (prefixLen === 32) return ip === network;
-    if (prefixLen === 24) return ip.startsWith(network.split('.').slice(0, 3).join('.'));
-    if (prefixLen === 16) return ip.startsWith(network.split('.').slice(0, 2).join('.'));
-    if (prefixLen === 8) return ip.startsWith(network.split('.')[0]);
+    // Support IPv4 only
+    if (prefix < 0 || prefix > 32) {
+        return false;
+    }
 
-    // For other prefixes, exact match only
-    return false;
+    // Convert IPs to 32-bit integers
+    const ipToInt = (ipStr) => ipStr.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+
+    const network = ipToInt(networkStr);
+    const ipNum = ipToInt(ip);
+
+    // Calculate subnet mask
+    const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+
+    // Check if IP is in the subnet
+    return (ipNum & mask) === (network & mask);
 }
