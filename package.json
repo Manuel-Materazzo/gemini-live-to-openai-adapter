@@ -1,0 +1,16 @@
+{
+  "name": "gemini-live-openai-adapter",
+  "version": "1.0.0",
+  "description": "OpenAI-compatible API adapter for Google Gemini Live API",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "5.1.0",
+    "@google/genai": "1.28.0",
+    "dotenv": "17.2.3"
+  }
+}
