@@ -9,6 +9,9 @@ import {DEFAULT_PORT, SERVICE_NAME, ALLOWED_IPS, TRUSTED_PROXY_IPS, REVERSE_PROX
 dotenv.config();
 
 const app = express();
+if (REVERSE_PROXY_MODE && TRUSTED_PROXY_IPS.length > 0) {
+    app.set('trust proxy', TRUSTED_PROXY_IPS);
+}
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
