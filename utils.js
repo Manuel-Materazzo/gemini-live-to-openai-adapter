@@ -21,30 +21,34 @@ export function convertToLiveAPITurns(messages) {
  */
 export function validateChatRequest(body) {
     const {messages, stream, temperature, max_tokens} = body;
+    const errors = [];
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-        return {isValid: false, error: 'messages must be a non-empty array'};
+        errors.push('messages must be a non-empty array');
     }
 
     for (const msg of messages) {
         if (!msg.role || !msg.content) {
-            return {isValid: false, error: 'Each message must have role and content'};
-        }
-        if (!['user', 'assistant', 'system'].includes(msg.role)) {
-            return {isValid: false, error: 'Invalid message role'};
+            errors.push('Each message must have role and content');
+        } else if (!['user', 'assistant', 'system'].includes(msg.role)) {
+            errors.push('Invalid message role');
         }
     }
 
     if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
-        return {isValid: false, error: 'temperature must be between 0 and 2'};
+        errors.push('temperature must be between 0 and 2');
     }
 
     if (max_tokens !== undefined && (!Number.isInteger(max_tokens) || max_tokens <= 0)) {
-        return {isValid: false, error: 'max_tokens must be a positive integer'};
+        errors.push('max_tokens must be a positive integer');
     }
 
     if (stream !== undefined && typeof stream !== 'boolean') {
-        return {isValid: false, error: 'stream must be a boolean'};
+        errors.push('stream must be a boolean');
+    }
+
+    if (errors.length > 0) {
+        return {isValid: false, error: errors.join(', ')};
     }
 
     return {isValid: true};
@@ -56,30 +60,31 @@ export function validateChatRequest(body) {
  * @returns {string} Real client IP address
  */
 function getRealClientIP(req) {
-    if (REVERSE_PROXY_MODE) {
-        // Check if the immediate proxy is trusted
-        const immediateProxyIP = req.ip || req.connection.remoteAddress;
-        if (TRUSTED_PROXY_IPS.includes(immediateProxyIP)) {
-            // Use Forwarded header first, then X-Forwarded-For
-            const forwarded = req.headers.forwarded;
-            if (forwarded) {
-                const forwardedFor = forwarded.split(';').find(part => part.trim().startsWith('for='));
-                if (forwardedFor) {
-                    const ipMatch = forwardedFor.trim().match(/for=([^;,\s]+)/u);
-                    if (ipMatch) return ipMatch[1].replaceAll(/^"|"$/g, '');
-                }
-            }
+    if (!REVERSE_PROXY_MODE) {
+        return req.ip || req.connection.remoteAddress;
+    }
 
-            const xForwardedFor = req.headers['x-forwarded-for'];
-            if (xForwardedFor) {
-                // Take the first (original client) IP
-                return xForwardedFor.split(',')[0].trim();
+    const immediateProxyIP = req.ip || req.connection.remoteAddress;
+    if (!TRUSTED_PROXY_IPS.includes(immediateProxyIP)) {
+        return immediateProxyIP;
+    }
+    const forwarded = req.headers.forwarded;
+    if (forwarded) {
+        const forwardedFor = forwarded.split(';').find(part => part.trim().startsWith('for='));
+        if (forwardedFor) {
+            const ipMatch = forwardedFor.trim().match(/for=([^;,\s]+)/u);
+            if (ipMatch) {
+                return ipMatch[1].replaceAll(/(^"|"$)/g, '');
             }
         }
     }
 
-    // Default to req.ip or remote address
-    return req.ip || req.connection.remoteAddress;
+    const xForwardedFor = req.headers['x-forwarded-for'];
+    if (xForwardedFor) {
+        return xForwardedFor.split(',')[0].trim();
+    }
+
+    return immediateProxyIP;
 }
 
 /**
