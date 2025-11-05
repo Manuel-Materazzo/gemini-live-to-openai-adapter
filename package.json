@@ -9,8 +9,10 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
-    "express": "5.1.0",
     "@google/genai": "1.28.0",
-    "dotenv": "17.2.3"
+    "cors": "^2.8.5",
+    "dotenv": "17.2.3",
+    "express": "5.1.0",
+    "helmet": "^8.1.0"
   }
 }
