@@ -99,7 +99,7 @@ curl http://localhost:3000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your_gemini_api_key_here" \
   -d '{
-    "model": "gpt-3.5-turbo",
+    "model": "gemini-live-2.5-flash-preview",
     "messages": [
       {"role": "user", "content": "What is RAG in AI?"}
     ]
@@ -179,6 +179,15 @@ docker build -t gemini-adapter .
 
 # Run the container
 docker run -p 3000:3000 --env-file .env gemini-adapter
+```
+
+Or use the prebuilt image:
+```bash
+# Pull the image
+docker pull ghcr.io/manuel-materazzo/gemini-live-to-openai-adapter:latest
+
+# Run the container
+docker run -p 3000:3000 --env-file .env ghcr.io/manuel-materazzo/gemini-live-to-openai-adapter
 ```
 
 ### Docker Compose
