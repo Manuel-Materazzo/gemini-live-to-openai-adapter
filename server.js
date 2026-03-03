@@ -27,7 +27,7 @@ app.get('/health', (req, res) => {
     res.json({status: 'ok', service: SERVICE_NAME});
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`\n🚀 ${SERVICE_NAME} running on http://localhost:${PORT}`);
     console.log(`\n🖇️Endpoints:`);
     console.log(`  POST http://localhost:${PORT}/v1/chat/completions`);
@@ -48,3 +48,18 @@ app.listen(PORT, () => {
         console.log(`\n🔓 No IP restrictions (open access)`);
     }
 });
+
+function gracefulShutdown(signal) {
+    console.log(`\n${signal} received. Shutting down gracefully...`);
+    server.close(() => {
+        console.log('Server closed.');
+        process.exit(0);
+    });
+    setTimeout(() => {
+        console.error('Forced shutdown after timeout.');
+        process.exit(1);
+    }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
