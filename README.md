@@ -1,7 +1,7 @@
 # Gemini Live to OpenAI Adapter
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
-![Node Version](https://img.shields.io/badge/node-%3E%3D14.0.0-green.svg)
+![Node Version](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)
 
 A lightweight Express.js server that provides an OpenAI-compatible API interface for Google's Gemini Live API, enabling seamless integration with existing OpenAI SDKs and tools.
 
@@ -30,14 +30,14 @@ A lightweight Express.js server that provides an OpenAI-compatible API interface
 
 ## Prerequisites
 
-- Node.js >= 14.0.0
+- Node.js >= 20.0.0
 - A valid Google Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) (provided by clients in Authorization header)
 
 ## Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/gemini-live-to-openai-adapter.git
+   git clone https://github.com/manuel-materazzo/gemini-live-to-openai-adapter.git
    cd gemini-live-to-openai-adapter
    ```
 
