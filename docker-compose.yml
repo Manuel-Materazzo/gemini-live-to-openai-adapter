@@ -1,10 +1,13 @@
 services:
   gemini-live-to-openai-adapter:
     container_name: gemini-live-to-openai-adapter
-    read_only: true
     build:
       context: ./
       dockerfile: Dockerfile
-    image: gemini-live-to-openai-adapter:latest
+    read_only: true
+    security_opt:
+      - no-new-privileges
+    cap_drop:
+      - ALL
     ports:
       - '3000:3000'
