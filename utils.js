@@ -73,7 +73,9 @@ export function validateChatRequest(body) {
  * @returns {string} Real client IP address
  */
 function getRealClientIP(req) {
-    return req.ip || req.connection.remoteAddress;
+    let ip = req.ip || req.connection.remoteAddress;
+    if (ip?.startsWith('::ffff:')) ip = ip.substring(7);
+    return ip;
 }
 
 /**
