@@ -35,8 +35,8 @@ export function validateChatRequest(body) {
         errors.push('messages must be a non-empty array');
     } else {
         for (const msg of messages) {
-            if (!msg.role || !msg.content) {
-                errors.push('Each message must have role and content');
+            if (!msg.role || typeof msg.content !== 'string') {
+                errors.push('Each message must have role and content (content must be a string)');
             } else if (!['user', 'assistant', 'system'].includes(msg.role)) {
                 errors.push('Invalid message role');
             }
@@ -53,6 +53,11 @@ export function validateChatRequest(body) {
 
     if (stream !== undefined && typeof stream !== 'boolean') {
         errors.push('stream must be a boolean');
+    }
+
+    const audio = body.audio;
+    if (audio?.format && !['wav', 'pcm16'].includes(audio.format)) {
+        errors.push('audio.format must be "wav" or "pcm16"');
     }
 
     if (errors.length > 0) {
