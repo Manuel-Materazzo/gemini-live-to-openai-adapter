@@ -101,6 +101,7 @@ function sendStreamChunk(res, model, content, requestId) {
  * Send the final streaming chunk
  * @param {Object} res - Express response object
  * @param {string} model - Model name
+ * @param {string} requestId - Request ID
  */
 function sendFinalStreamChunk(res, model, requestId) {
     const finalChunk = {
@@ -126,7 +127,8 @@ function sendFinalStreamChunk(res, model, requestId) {
 function createLiveSession(ai, options) {
     const {model, config, streamHandler} = options;
 
-    let fullResponse = '';
+    let fullTranscript = '';
+    const audioChunks = [];
     let isComplete = false;
     let settled = false;
     let responseResolver, responseRejecter;
@@ -143,11 +145,26 @@ function createLiveSession(ai, options) {
                 console.log('[Live API] Connection opened');
             },
             onmessage: (message) => {
-                if (message.text) {
-                    fullResponse += message.text;
+                // Extract audio data from model turn
+                if (message.serverContent?.modelTurn?.parts) {
+                    for (const part of message.serverContent.modelTurn.parts) {
+                        if (part.inlineData?.data) {
+                            const base64Data = typeof part.inlineData.data === 'string'
+                                ? part.inlineData.data
+                                : Buffer.from(part.inlineData.data).toString('base64');
+                            audioChunks.push(base64Data);
+                            if (streamHandler) {
+                                streamHandler.onAudioData(base64Data);
+                            }
+                        }
+                    }
+                }
 
+                // Extract transcription text
+                if (message.serverContent?.outputTranscription?.text) {
+                    fullTranscript += message.serverContent.outputTranscription.text;
                     if (streamHandler) {
-                        streamHandler.onMessage(message);
+                        streamHandler.onTranscript(message.serverContent.outputTranscription.text);
                     }
                 }
 
@@ -157,7 +174,7 @@ function createLiveSession(ai, options) {
                     if (streamHandler) {
                         streamHandler.onComplete();
                     }
-                    responseResolver(fullResponse);
+                    responseResolver({transcript: fullTranscript, audioChunks});
                 }
             },
             onerror: (e) => {
@@ -181,12 +198,13 @@ function createLiveSession(ai, options) {
 }
 
 /**
- * Format non-streaming response
+ * Format non-streaming text-only response
  * @param {string} content - Response content
  * @param {string} model - Model name
+ * @param {string} requestId - Request ID
  * @returns {Object} Formatted response
  */
-function formatNonStreamingResponse(content, model, requestId) {
+function formatTextResponse(content, model, requestId) {
     return {
         id: requestId,
         object: 'chat.completion',
