@@ -237,6 +237,9 @@ export async function handleChatCompletions(req, res) {
         // Create Live API session
         const {session, responsePromise} = await createLiveSession(ai, {model, config, streamHandler});
 
+        // Clean up session on client disconnect
+        req.on('close', () => { try { session.close(); } catch {} });
+
         // Convert and send messages
         const turns = convertToLiveAPITurns(messages);
         session.sendClientContent({turns: turns, turnComplete: true});
