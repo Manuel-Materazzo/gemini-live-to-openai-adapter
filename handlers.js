@@ -2,7 +2,7 @@
 
 import crypto from 'crypto';
 import {GoogleGenAI, Modality} from '@google/genai';
-import {convertToLiveAPITurns, validateChatRequest} from './utils.js';
+import {convertToLiveAPITurns, validateChatRequest, buildWavHeader, wantsAudioOutput} from './utils.js';
 import {DEFAULT_MODEL} from './config.js';
 
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 60000;
@@ -41,10 +41,13 @@ function buildSessionConfig(options) {
  * Create streaming response handler
  * @param {Object} res - Express response object
  * @param {string} model - Model name
+ * @param {string} requestId - Request ID
+ * @param {boolean} includeAudio - Whether to include audio in the stream
  * @returns {Object} Handler functions
  */
-function createStreamingHandler(res, model, requestId) {
-    let fullResponse = '';
+function createStreamingHandler(res, model, requestId, includeAudio) {
+    let fullTranscript = '';
+    const audioChunks = [];
 
     // Emit initial chunk with assistant role
     const initialChunk = {
@@ -61,18 +64,28 @@ function createStreamingHandler(res, model, requestId) {
     res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
 
     return {
-        onMessage: (message) => {
-            if (message.text) {
-                fullResponse += message.text;
-                sendStreamChunk(res, model, message.text, requestId);
+        onTranscript: (text) => {
+            fullTranscript += text;
+            if (!includeAudio) {
+                sendStreamChunk(res, model, requestId, {content: text});
+            }
+        },
+        onAudioData: (base64Data) => {
+            audioChunks.push(base64Data);
+            if (includeAudio) {
+                sendStreamChunk(res, model, requestId, {audio: {data: base64Data}});
             }
         },
         onComplete: () => {
+            if (includeAudio && fullTranscript) {
+                sendStreamChunk(res, model, requestId, {audio: {transcript: fullTranscript}});
+            }
             sendFinalStreamChunk(res, model, requestId);
             res.write('data: [DONE]\n\n');
             res.end();
         },
-        getFullResponse: () => fullResponse
+        getFullTranscript: () => fullTranscript,
+        getAudioChunks: () => audioChunks
     };
 }
 
@@ -80,9 +93,10 @@ function createStreamingHandler(res, model, requestId) {
  * Send a streaming chunk to the response
  * @param {Object} res - Express response object
  * @param {string} model - Model name
- * @param {string} content - Content to send
+ * @param {string} requestId - Request ID
+ * @param {Object} delta - Delta content to send
  */
-function sendStreamChunk(res, model, content, requestId) {
+function sendStreamChunk(res, model, requestId, delta) {
     const chunk = {
         id: requestId,
         object: 'chat.completion.chunk',
@@ -90,7 +104,7 @@ function sendStreamChunk(res, model, content, requestId) {
         model: model,
         choices: [{
             index: 0,
-            delta: {content: content},
+            delta: delta,
             finish_reason: null
         }]
     };
@@ -222,6 +236,56 @@ function formatTextResponse(content, model, requestId) {
 }
 
 /**
+ * Format non-streaming audio response (OpenAI-compatible)
+ * @param {string} transcript - Transcription text
+ * @param {string} audioBase64 - Base64 encoded audio data
+ * @param {string} model - Model name
+ * @param {string} requestId - Request ID
+ * @returns {Object} Formatted response
+ */
+function formatAudioResponse(transcript, audioBase64, model, requestId) {
+    return {
+        id: requestId,
+        object: 'chat.completion',
+        created: Math.floor(Date.now() / 1000),
+        model: model,
+        choices: [{
+            index: 0,
+            message: {
+                role: 'assistant',
+                content: null,
+                audio: {
+                    id: 'audio_' + crypto.randomUUID(),
+                    data: audioBase64,
+                    transcript: transcript
+                }
+            },
+            finish_reason: 'stop'
+        }]
+    };
+}
+
+/**
+ * Combine audio chunks into a single WAV base64 string
+ * @param {Array} audioChunks - Array of base64 encoded PCM chunks
+ * @param {string} format - Output format ('wav' or 'pcm16')
+ * @returns {string} Combined base64 audio data
+ */
+function combineAudioChunks(audioChunks, format) {
+    const pcmBuffers = audioChunks.map(chunk => Buffer.from(chunk, 'base64'));
+    const pcmData = Buffer.concat(pcmBuffers);
+
+    if (format === 'pcm16') {
+        return pcmData.toString('base64');
+    }
+
+    // Default to WAV
+    const wavHeader = buildWavHeader(pcmData.length);
+    const wavBuffer = Buffer.concat([wavHeader, pcmData]);
+    return wavBuffer.toString('base64');
+}
+
+/**
  * Set up streaming response headers
  * @param {Object} res - Express response object
  */
@@ -258,8 +322,12 @@ export async function handleChatCompletions(req, res) {
         const ai = new GoogleGenAI({apiKey: apiKey});
         const requestId = 'chatcmpl-' + crypto.randomUUID();
 
-        const {messages, model = DEFAULT_MODEL, temperature, max_tokens} = req.body;
+        const {messages, model = DEFAULT_MODEL, temperature, max_tokens, modalities, audio} = req.body;
         stream = req.body.stream ?? false;
+
+        const includeAudio = wantsAudioOutput(modalities);
+        const audioFormat = audio?.format || 'wav';
+        const voice = audio?.voice;
 
         // Validate request
         const validation = validateChatRequest(req.body);
@@ -273,14 +341,14 @@ export async function handleChatCompletions(req, res) {
         }
 
         // Build session configuration
-        const config = buildSessionConfig({temperature, maxTokens: max_tokens});
+        const config = buildSessionConfig({temperature, maxTokens: max_tokens, voice});
 
         let streamHandler;
 
         // Set up streaming if requested
         if (stream) {
             setupStreamingHeaders(res);
-            streamHandler = createStreamingHandler(res, model, requestId);
+            streamHandler = createStreamingHandler(res, model, requestId, includeAudio);
         }
 
         // Create Live API session
@@ -295,9 +363,9 @@ export async function handleChatCompletions(req, res) {
 
         // Wait for response with timeout
         const timeout = setTimeout(() => { try { session.close(); } catch {} }, REQUEST_TIMEOUT_MS);
-        let completeResponse;
+        let result;
         try {
-            completeResponse = await responsePromise;
+            result = await responsePromise;
         } finally {
             clearTimeout(timeout);
         }
@@ -305,10 +373,16 @@ export async function handleChatCompletions(req, res) {
         // Close the session
         session.close();
 
-        // Send response
+        // Send response (non-streaming only; streaming is handled by streamHandler)
         if (!stream) {
-            const response = formatNonStreamingResponse(completeResponse, model, requestId);
-            res.json(response);
+            if (includeAudio && result.audioChunks.length > 0) {
+                const audioBase64 = combineAudioChunks(result.audioChunks, audioFormat);
+                const response = formatAudioResponse(result.transcript, audioBase64, model, requestId);
+                res.json(response);
+            } else {
+                const response = formatTextResponse(result.transcript, model, requestId);
+                res.json(response);
+            }
         }
 
     } catch (error) {
