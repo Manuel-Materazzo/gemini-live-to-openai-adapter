@@ -1,6 +1,6 @@
 // Utility functions for the Gemini Live to OpenAI Adapter
 
-import {ALLOWED_IPS, TRUSTED_PROXY_IPS, REVERSE_PROXY_MODE} from './config.js';
+import {ALLOWED_IPS} from './config.js';
 
 /**
  * Convert OpenAI messages to Live API turns
@@ -192,7 +192,7 @@ function isIPInCIDR(ip, cidr) {
         const network = ipToInt(networkStr);
         const ipNum = ipToInt(ip);
         // Calculate subnet mask
-        const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+        const mask = prefix === 0 ? 0 : ((0xFFFFFFFF << (32 - prefix)) >>> 0);
         // Check if IP is in the subnet
         return (ipNum & mask) === (network & mask);
     }
