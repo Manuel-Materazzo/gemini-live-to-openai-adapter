@@ -32,18 +32,18 @@ function buildSessionConfig(options) {
  * @param {string} model - Model name
  * @returns {Object} Handler functions
  */
-function createStreamingHandler(res, model) {
+function createStreamingHandler(res, model, requestId) {
     let fullResponse = '';
 
     return {
         onMessage: (message) => {
             if (message.text) {
                 fullResponse += message.text;
-                sendStreamChunk(res, model, message.text);
+                sendStreamChunk(res, model, message.text, requestId);
             }
         },
         onComplete: () => {
-            sendFinalStreamChunk(res, model);
+            sendFinalStreamChunk(res, model, requestId);
             res.write('data: [DONE]\n\n');
             res.end();
         },
@@ -57,9 +57,9 @@ function createStreamingHandler(res, model) {
  * @param {string} model - Model name
  * @param {string} content - Content to send
  */
-function sendStreamChunk(res, model, content) {
+function sendStreamChunk(res, model, content, requestId) {
     const chunk = {
-        id: 'chatcmpl-' + Date.now(),
+        id: requestId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
         model: model,
@@ -77,9 +77,9 @@ function sendStreamChunk(res, model, content) {
  * @param {Object} res - Express response object
  * @param {string} model - Model name
  */
-function sendFinalStreamChunk(res, model) {
+function sendFinalStreamChunk(res, model, requestId) {
     const finalChunk = {
-        id: 'chatcmpl-' + Date.now(),
+        id: requestId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
         model: model,
@@ -155,9 +155,9 @@ function createLiveSession(ai, options) {
  * @param {string} model - Model name
  * @returns {Object} Formatted response
  */
-function formatNonStreamingResponse(content, model) {
+function formatNonStreamingResponse(content, model, requestId) {
     return {
-        id: 'chatcmpl-' + Date.now(),
+        id: requestId,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
         model: model,
@@ -209,6 +209,7 @@ export async function handleChatCompletions(req, res) {
 
         // Create GoogleGenAI instance with the API key
         const ai = new GoogleGenAI({apiKey: apiKey});
+        const requestId = 'chatcmpl-' + crypto.randomUUID();
 
         const {messages, model = DEFAULT_MODEL, stream = false, temperature, max_tokens} = req.body;
 
@@ -231,7 +232,7 @@ export async function handleChatCompletions(req, res) {
         // Set up streaming if requested
         if (stream) {
             setupStreamingHeaders(res);
-            streamHandler = createStreamingHandler(res, model);
+            streamHandler = createStreamingHandler(res, model, requestId);
         }
 
         // Create Live API session
@@ -258,7 +259,7 @@ export async function handleChatCompletions(req, res) {
 
         // Send response
         if (!stream) {
-            const response = formatNonStreamingResponse(completeResponse, model);
+            const response = formatNonStreamingResponse(completeResponse, model, requestId);
             res.json(response);
         }
 
