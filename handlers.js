@@ -14,8 +14,18 @@ const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 60000;
  */
 function buildSessionConfig(options) {
     const config = {
-        responseModalities: [Modality.TEXT]
+        responseModalities: [Modality.AUDIO],
+        outputAudioTranscription: {}
     };
+
+    // Add voice configuration if provided
+    if (options.voice) {
+        config.speechConfig = {
+            voiceConfig: {
+                prebuiltVoiceConfig: {voiceName: options.voice}
+            }
+        };
+    }
 
     // Add generation config if provided
     if (options.temperature !== undefined || options.maxTokens !== undefined) {
