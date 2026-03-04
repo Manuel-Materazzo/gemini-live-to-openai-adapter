@@ -1,12 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import {handleChatCompletions} from './handlers.js';
 import {ipRestrictionMiddleware} from './utils.js';
 import {DEFAULT_PORT, SERVICE_NAME, ALLOWED_IPS, TRUSTED_PROXY_IPS, REVERSE_PROXY_MODE} from './config.js';
-
-dotenv.config();
 
 const app = express();
 if (REVERSE_PROXY_MODE && TRUSTED_PROXY_IPS.length > 0) {

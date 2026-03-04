@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 // Configuration constants for the Gemini Live to OpenAI Adapter
 
 export const DEFAULT_PORT = 3000;
