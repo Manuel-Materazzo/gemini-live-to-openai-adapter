@@ -212,6 +212,7 @@ function setupStreamingHeaders(res) {
  * @param {Object} res - Express response object
  */
 export async function handleChatCompletions(req, res) {
+    let stream = false;
     try {
         // Extract API key from Bearer token
         const authHeader = req.headers.authorization;
@@ -229,7 +230,8 @@ export async function handleChatCompletions(req, res) {
         const ai = new GoogleGenAI({apiKey: apiKey});
         const requestId = 'chatcmpl-' + crypto.randomUUID();
 
-        const {messages, model = DEFAULT_MODEL, stream = false, temperature, max_tokens} = req.body;
+        const {messages, model = DEFAULT_MODEL, temperature, max_tokens} = req.body;
+        stream = req.body.stream ?? false;
 
         // Validate request
         const validation = validateChatRequest(req.body);
