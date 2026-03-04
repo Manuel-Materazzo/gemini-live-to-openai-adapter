@@ -40,6 +40,8 @@ const server = app.listen(PORT, () => {
             console.log(`  Trusted Proxy IPs: ${TRUSTED_PROXY_IPS.length > 0 ? TRUSTED_PROXY_IPS.join(', ') : 'None'}`);
         } else {
             console.log(`  Reverse Proxy Mode: Disabled`);
+            console.log(`  ⚠️  ALLOWED_IPS is set but REVERSE_PROXY_MODE is disabled.`);
+            console.log(`     If behind a proxy, client IPs may not be detected correctly.`);
         }
     } else {
         console.log(`\n🔓 No IP restrictions (open access)`);
