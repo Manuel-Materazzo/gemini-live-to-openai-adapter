@@ -4,6 +4,8 @@ import {GoogleGenAI, Modality} from '@google/genai';
 import {convertToLiveAPITurns, validateChatRequest} from './utils.js';
 import {DEFAULT_MODEL} from './config.js';
 
+const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 60000;
+
 /**
  * Build configuration for Live API session
  * @param {Object} options - Configuration options
@@ -239,8 +241,14 @@ export async function handleChatCompletions(req, res) {
         const turns = convertToLiveAPITurns(messages);
         session.sendClientContent({turns: turns, turnComplete: true});
 
-        // Wait for response
-        const completeResponse = await responsePromise;
+        // Wait for response with timeout
+        const timeout = setTimeout(() => { try { session.close(); } catch {} }, REQUEST_TIMEOUT_MS);
+        let completeResponse;
+        try {
+            completeResponse = await responsePromise;
+        } finally {
+            clearTimeout(timeout);
+        }
 
         // Close the session
         session.close();
