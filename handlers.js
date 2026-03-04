@@ -53,7 +53,6 @@ function safeWrite(res, data) {
  */
 function createStreamingHandler(res, model, requestId, includeAudio) {
     let fullTranscript = '';
-    const audioChunks = [];
 
     // Emit initial chunk with assistant role
     const initialChunk = {
@@ -79,7 +78,6 @@ function createStreamingHandler(res, model, requestId, includeAudio) {
             }
         },
         onAudioData: (base64Data) => {
-            audioChunks.push(base64Data);
             if (includeAudio) {
                 sendStreamChunk(res, model, requestId, {audio: {data: base64Data}});
             }
@@ -89,11 +87,10 @@ function createStreamingHandler(res, model, requestId, includeAudio) {
                 sendStreamChunk(res, model, requestId, {audio: {transcript: fullTranscript}});
             }
             sendFinalStreamChunk(res, model, requestId);
-            res.write('data: [DONE]\n\n');
+            safeWrite(res, 'data: [DONE]\n\n');
             res.end();
         },
-        getFullTranscript: () => fullTranscript,
-        getAudioChunks: () => audioChunks
+        getFullTranscript: () => fullTranscript
     };
 }
 
