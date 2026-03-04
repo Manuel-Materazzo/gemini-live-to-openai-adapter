@@ -37,6 +37,11 @@ function buildSessionConfig(options) {
     return config;
 }
 
+function safeWrite(res, data) {
+    if (res.writableEnded || res.destroyed) return false;
+    try { return res.write(data); } catch { return false; }
+}
+
 /**
  * Create streaming response handler
  * @param {Object} res - Express response object
@@ -61,7 +66,7 @@ function createStreamingHandler(res, model, requestId, includeAudio) {
             finish_reason: null
         }]
     };
-    res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
+    safeWrite(res, `data: ${JSON.stringify(initialChunk)}\n\n`);
 
     return {
         onTranscript: (text) => {
@@ -108,7 +113,7 @@ function sendStreamChunk(res, model, requestId, delta) {
             finish_reason: null
         }]
     };
-    res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    safeWrite(res, `data: ${JSON.stringify(chunk)}\n\n`);
 }
 
 /**
@@ -129,7 +134,7 @@ function sendFinalStreamChunk(res, model, requestId) {
             finish_reason: 'stop'
         }]
     };
-    res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
+    safeWrite(res, `data: ${JSON.stringify(finalChunk)}\n\n`);
 }
 
 /**
@@ -398,12 +403,13 @@ export async function handleChatCompletions(req, res) {
         } else if (stream) {
             // For streaming, try to send error in stream format
             try {
-                res.write(`data: ${JSON.stringify({
+                safeWrite(res, `data: ${JSON.stringify({
                     error: {
                         message: error.message || 'Internal server error',
                         type: 'server_error'
                     }
                 })}\n\n`);
+                safeWrite(res, 'data: [DONE]\n\n');
                 res.end();
             } catch (e) {
                 console.error('Failed to send error in stream:', e.message);
