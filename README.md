@@ -54,6 +54,9 @@ The server supports additional environment variables:
 - `ALLOWED_IPS`: Comma-separated list of allowed IP addresses for access control
 - `TRUSTED_PROXY_IPS`: Comma-separated list of trusted proxy IPs
 - `REVERSE_PROXY_MODE`: Enable reverse proxy mode (true/false)
+- `CORS_ORIGIN`: Comma-separated list of allowed CORS origins (CORS disabled if not set)
+- `JSON_LIMIT`: Maximum JSON body size (default: 256kb)
+- `REQUEST_TIMEOUT_MS`: Request timeout in milliseconds (default: 60000)
 
 ## Usage
 
