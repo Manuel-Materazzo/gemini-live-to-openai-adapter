@@ -237,8 +237,7 @@ export async function handleChatCompletions(req, res) {
 
         // Convert and send messages
         const turns = convertToLiveAPITurns(messages);
-        const lastUserMessage = turns.at(-1);
-        session.sendClientContent({turns: lastUserMessage, turnComplete: true});
+        session.sendClientContent({turns: turns, turnComplete: true});
 
         // Wait for response
         const completeResponse = await responsePromise;
