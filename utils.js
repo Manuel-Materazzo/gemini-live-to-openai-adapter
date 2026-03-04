@@ -25,13 +25,13 @@ export function validateChatRequest(body) {
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         errors.push('messages must be a non-empty array');
-    }
-
-    for (const msg of messages) {
-        if (!msg.role || !msg.content) {
-            errors.push('Each message must have role and content');
-        } else if (!['user', 'assistant', 'system'].includes(msg.role)) {
-            errors.push('Invalid message role');
+    } else {
+        for (const msg of messages) {
+            if (!msg.role || !msg.content) {
+                errors.push('Each message must have role and content');
+            } else if (!['user', 'assistant', 'system'].includes(msg.role)) {
+                errors.push('Invalid message role');
+            }
         }
     }
 
