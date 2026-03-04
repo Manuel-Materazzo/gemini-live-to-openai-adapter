@@ -1,5 +1,6 @@
 // Handlers for the Gemini Live to OpenAI Adapter
 
+import crypto from 'crypto';
 import {GoogleGenAI, Modality} from '@google/genai';
 import {convertToLiveAPITurns, validateChatRequest} from './utils.js';
 import {DEFAULT_MODEL} from './config.js';
@@ -34,6 +35,20 @@ function buildSessionConfig(options) {
  */
 function createStreamingHandler(res, model, requestId) {
     let fullResponse = '';
+
+    // Emit initial chunk with assistant role
+    const initialChunk = {
+        id: requestId,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: model,
+        choices: [{
+            index: 0,
+            delta: {role: 'assistant'},
+            finish_reason: null
+        }]
+    };
+    res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
 
     return {
         onMessage: (message) => {
