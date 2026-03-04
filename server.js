@@ -13,8 +13,8 @@ if (REVERSE_PROXY_MODE && TRUSTED_PROXY_IPS.length > 0) {
     app.set('trust proxy', TRUSTED_PROXY_IPS);
 }
 app.use(helmet());
-app.use(cors());
-app.use(express.json());
+app.use(cors({origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : false}));
+app.use(express.json({limit: process.env.JSON_LIMIT || '256kb'}));
 app.use(ipRestrictionMiddleware);
 
 const PORT = process.env.PORT || DEFAULT_PORT;
