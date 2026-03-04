@@ -60,31 +60,7 @@ export function validateChatRequest(body) {
  * @returns {string} Real client IP address
  */
 function getRealClientIP(req) {
-    if (!REVERSE_PROXY_MODE) {
-        return req.ip || req.connection.remoteAddress;
-    }
-
-    const immediateProxyIP = req.ip || req.connection.remoteAddress;
-    if (!TRUSTED_PROXY_IPS.includes(immediateProxyIP)) {
-        return immediateProxyIP;
-    }
-    const forwarded = req.headers.forwarded;
-    if (forwarded) {
-        const forwardedFor = forwarded.split(';').find(part => part.trim().startsWith('for='));
-        if (forwardedFor) {
-            const ipMatch = forwardedFor.trim().match(/for=([^;,\s]+)/u);
-            if (ipMatch) {
-            return ipMatch[1].replaceAll(/^\[|\]$/g, '').replaceAll(/(^"|"$)/g, '');
-            }
-        }
-    }
-
-    const xForwardedFor = req.headers['x-forwarded-for'];
-    if (xForwardedFor) {
-        return xForwardedFor.split(',')[0].trim().replaceAll(/^\[|\]$/g, '').replaceAll(/(^"|"$)/g, '');
-    }
-
-    return immediateProxyIP;
+    return req.ip || req.connection.remoteAddress;
 }
 
 /**
