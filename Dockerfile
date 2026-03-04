@@ -1,4 +1,4 @@
-FROM node:25-alpine
+FROM node:24-alpine
 
 WORKDIR /home/node/app
 
@@ -10,7 +10,7 @@ COPY . .
 
 EXPOSE 3000
 
-RUN addgroup --system geminiadapter && adduser --system --group geminiadapter
-USER coginets
+RUN addgroup -S geminiadapter && adduser -S geminiadapter -G geminiadapter
+USER geminiadapter
 
 CMD [ "node", "server.js" ]
