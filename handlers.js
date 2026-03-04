@@ -103,6 +103,7 @@ function createLiveSession(ai, options) {
 
     let fullResponse = '';
     let isComplete = false;
+    let settled = false;
     let responseResolver, responseRejecter;
     const responsePromise = new Promise((resolve, reject) => {
         responseResolver = resolve;
@@ -127,6 +128,7 @@ function createLiveSession(ai, options) {
 
                 if (message.serverContent?.turnComplete) {
                     isComplete = true;
+                    settled = true;
                     if (streamHandler) {
                         streamHandler.onComplete();
                     }
@@ -135,11 +137,15 @@ function createLiveSession(ai, options) {
             },
             onerror: (e) => {
                 console.error('[Live API] Error:', e.message);
-                responseRejecter(new Error(e.message || 'Live API error'));
+                if (!settled) {
+                    settled = true;
+                    responseRejecter(new Error(e.message || 'Live API error'));
+                }
             },
             onclose: (e) => {
                 console.log('[Live API] Connection closed:', e.reason);
-                if (!isComplete) {
+                if (!isComplete && !settled) {
+                    settled = true;
                     responseRejecter(new Error(e.reason || 'Connection closed unexpectedly'));
                 }
             }
