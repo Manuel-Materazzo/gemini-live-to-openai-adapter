@@ -106,6 +106,46 @@ export function ipRestrictionMiddleware(req, res, next) {
 }
 
 /**
+ * Build a WAV header for raw PCM data
+ * @param {number} dataLength - Length of the PCM data in bytes
+ * @param {number} sampleRate - Sample rate (default 24000 for Gemini output)
+ * @param {number} channels - Number of channels (default 1 mono)
+ * @param {number} bitsPerSample - Bits per sample (default 16)
+ * @returns {Buffer} WAV header buffer
+ */
+export function buildWavHeader(dataLength, sampleRate = 24000, channels = 1, bitsPerSample = 16) {
+    const byteRate = sampleRate * channels * (bitsPerSample / 8);
+    const blockAlign = channels * (bitsPerSample / 8);
+    const header = Buffer.alloc(44);
+
+    header.write('RIFF', 0);
+    header.writeUInt32LE(36 + dataLength, 4);
+    header.write('WAVE', 8);
+    header.write('fmt ', 12);
+    header.writeUInt32LE(16, 16);
+    header.writeUInt16LE(1, 20);
+    header.writeUInt16LE(channels, 22);
+    header.writeUInt32LE(sampleRate, 24);
+    header.writeUInt32LE(byteRate, 28);
+    header.writeUInt16LE(blockAlign, 32);
+    header.writeUInt16LE(bitsPerSample, 34);
+    header.write('data', 36);
+    header.writeUInt32LE(dataLength, 40);
+
+    return header;
+}
+
+/**
+ * Determine if the request wants audio output
+ * @param {Array} modalities - The modalities array from the request
+ * @returns {boolean} True if audio output is requested
+ */
+export function wantsAudioOutput(modalities) {
+    if (!modalities || !Array.isArray(modalities)) return false;
+    return modalities.some(m => m.toLowerCase() === 'audio');
+}
+
+/**
  * Check if string is a valid IPv4 address
  * @param {string} ip - IP address string
  * @returns {boolean} True if valid IPv4
