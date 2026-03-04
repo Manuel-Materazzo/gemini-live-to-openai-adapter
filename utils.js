@@ -8,10 +8,18 @@ import {ALLOWED_IPS} from './config.js';
  * @returns {Array} Array of Live API turn objects
  */
 export function convertToLiveAPITurns(messages) {
-    return messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : msg.role,
-        parts: [{text: msg.content}]
-    }));
+    return messages.map(msg => {
+        let role;
+        if (msg.role === 'assistant') {
+            role = 'model';
+        } else if (msg.role === 'system') {
+            role = 'user';
+        } else {
+            role = msg.role;
+        }
+        const text = msg.role === 'system' ? `[SYSTEM] ${msg.content}` : msg.content;
+        return {role, parts: [{text}]};
+    });
 }
 
 /**
