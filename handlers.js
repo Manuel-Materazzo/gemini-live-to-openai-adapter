@@ -6,6 +6,7 @@ import {convertToLiveAPITurns, validateChatRequest, buildWavHeader, wantsAudioOu
 import {DEFAULT_MODEL} from './config.js';
 
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 60000;
+const MAX_TRANSCRIPT_LENGTH = 1_000_000;
 
 /**
  * Build configuration for Live API session
@@ -70,7 +71,9 @@ function createStreamingHandler(res, model, requestId, includeAudio) {
 
     return {
         onTranscript: (text) => {
-            fullTranscript += text;
+            if (fullTranscript.length < MAX_TRANSCRIPT_LENGTH) {
+                fullTranscript += text;
+            }
             if (!includeAudio) {
                 sendStreamChunk(res, model, requestId, {content: text});
             }
@@ -181,7 +184,9 @@ function createLiveSession(ai, options) {
 
                 // Extract transcription text
                 if (message.serverContent?.outputTranscription?.text) {
-                    fullTranscript += message.serverContent.outputTranscription.text;
+                    if (fullTranscript.length < MAX_TRANSCRIPT_LENGTH) {
+                        fullTranscript += message.serverContent.outputTranscription.text;
+                    }
                     if (streamHandler) {
                         streamHandler.onTranscript(message.serverContent.outputTranscription.text);
                     }
