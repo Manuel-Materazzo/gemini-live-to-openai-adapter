@@ -164,6 +164,7 @@ function createLiveSession(ai, options) {
                 console.log('[Live API] Connection opened');
             },
             onmessage: (message) => {
+                if (settled) return;
                 // Extract audio data from model turn
                 if (message.serverContent?.modelTurn?.parts) {
                     for (const part of message.serverContent.modelTurn.parts) {
