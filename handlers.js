@@ -362,24 +362,29 @@ export async function handleChatCompletions(req, res) {
         // Create Live API session
         const {session, responsePromise} = await createLiveSession(ai, {model, config, streamHandler});
 
+        let closed = false;
+        const safeClose = () => {
+            if (closed) return;
+            closed = true;
+            try { session.close(); } catch {}
+        };
+
         // Clean up session on client disconnect
-        req.on('close', () => { try { session.close(); } catch {} });
+        req.on('close', () => { if (!res.writableEnded) safeClose(); });
 
         // Convert and send messages
         const turns = convertToLiveAPITurns(messages);
         session.sendClientContent({turns: turns, turnComplete: true});
 
         // Wait for response with timeout
-        const timeout = setTimeout(() => { try { session.close(); } catch {} }, REQUEST_TIMEOUT_MS);
+        const timeout = setTimeout(() => safeClose(), REQUEST_TIMEOUT_MS);
         let result;
         try {
             result = await responsePromise;
         } finally {
             clearTimeout(timeout);
+            safeClose();
         }
-
-        // Close the session
-        session.close();
 
         // Send response (non-streaming only; streaming is handled by streamHandler)
         if (!stream) {
@@ -396,7 +401,7 @@ export async function handleChatCompletions(req, res) {
     } catch (error) {
         console.error('Error in chat completions:', error);
 
-        if (!res.headersSent) {
+        if (!res.headersSent && !res.destroyed) {
             res.status(500).json({
                 error: {
                     message: error.message || 'Internal server error',
