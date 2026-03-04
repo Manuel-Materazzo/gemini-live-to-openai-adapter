@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Node Version](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)
 
-A lightweight Express.js server that provides an OpenAI-compatible API interface for Google's Gemini Live API, enabling seamless integration with existing OpenAI SDKs and tools.
+A lightweight Express.js server that provides an OpenAI-compatible API interface for Google's Gemini Live API with native audio, enabling seamless integration with existing OpenAI SDKs and tools. Supports both text transcription and audio output responses.
 
 ## Table of Contents
 
@@ -21,6 +21,10 @@ A lightweight Express.js server that provides an OpenAI-compatible API interface
 ## Features
 
 - **OpenAI Compatibility**: Drop-in replacement for OpenAI API clients
+- **Native Audio**: Uses Gemini's native audio model for natural, human-like speech
+- **Audio Output**: OpenAI-compatible audio responses with `message.audio` (base64 WAV + transcript)
+- **Text Fallback**: When audio is not requested, returns transcription as standard `message.content`
+- **Voice Selection**: 30 HD voices via the `audio.voice` parameter
 - **Streaming Support**: Real-time streaming and non-streaming responses
 - **Stateless Design**: WebSocket connections open/close per request for high throughput
 - **High Throughput**: Leverages Gemini Live API's higher rate limits (1M TPM vs OpenAI's 250k TPM)
@@ -87,22 +91,48 @@ The server will be available at `http://localhost:3000` (or your configured PORT
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `model` | string | Any OpenAI model name (maps to Gemini Live API) |
+| `model` | string | Gemini model name (default: `gemini-2.5-flash-native-audio-preview-12-2025`) |
 | `messages` | array | Array of message objects with `role` and `content` |
 | `stream` | boolean | Enable streaming responses |
 | `temperature` | number | Controls randomness (0-2) |
 | `max_tokens` | number | Maximum tokens in response |
+| `modalities` | array | Output modalities: `["text"]` (default) or `["text", "audio"]` |
+| `audio.voice` | string | Voice name for audio output (e.g., `Kore`, `Puck`, `Charon`) |
+| `audio.format` | string | Audio format: `wav` (default) or `pcm16` |
+
+### Response Modes
+
+| Request `modalities` | Response format |
+|---|---|
+| Not set / `["text"]` | Standard `message.content` with transcription text |
+| `["text", "audio"]` or `["audio"]` | `message.audio.data` (base64 WAV) + `message.audio.transcript` |
 
 ## Examples
 
 ### Using curl
 
+**Text response (default):**
 ```bash
 curl http://localhost:3000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your_gemini_api_key_here" \
   -d '{
-    "model": "gemini-live-2.5-flash-preview",
+    "model": "gemini-2.5-flash-native-audio-preview-12-2025",
+    "messages": [
+      {"role": "user", "content": "What is RAG in AI?"}
+    ]
+  }'
+```
+
+**Audio + text response:**
+```bash
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_gemini_api_key_here" \
+  -d '{
+    "model": "gemini-2.5-flash-native-audio-preview-12-2025",
+    "modalities": ["text", "audio"],
+    "audio": {"voice": "Kore", "format": "wav"},
     "messages": [
       {"role": "user", "content": "What is RAG in AI?"}
     ]
@@ -120,7 +150,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="gemini-live-2.5-flash-preview",
+    model="gemini-2.5-flash-native-audio-preview-12-2025",
     messages=[
         {"role": "user", "content": "Explain retrieval augmented generation"}
     ]
@@ -140,7 +170,7 @@ const openai = new OpenAI({
 });
 
 const response = await openai.chat.completions.create({
-  model: 'gemini-live-2.5-flash-preview',
+  model: 'gemini-2.5-flash-native-audio-preview-12-2025',
   messages: [
     { role: 'user', content: 'What is RAG?' }
   ]
@@ -160,7 +190,7 @@ client = OpenAI(
 )
 
 stream = client.chat.completions.create(
-    model="gemini-live-2.5-flash-preview",
+    model="gemini-2.5-flash-native-audio-preview-12-2025",
     messages=[{"role": "user", "content": "Count to 10"}],
     stream=True
 )
