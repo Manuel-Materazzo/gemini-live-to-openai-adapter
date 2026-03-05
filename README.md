@@ -61,6 +61,7 @@ The server supports additional environment variables:
 - `CORS_ORIGIN`: Comma-separated list of allowed CORS origins (CORS disabled if not set)
 - `JSON_LIMIT`: Maximum JSON body size (default: 256kb)
 - `REQUEST_TIMEOUT_MS`: Request timeout in milliseconds (default: 60000)
+- `TOKEN_COUNT_MODE`: Token usage estimation mode — `estimate` (character heuristic, default), `count_tokens` (Gemini countTokens API for prompt + heuristic for completion), or `off` (returns 0)
 
 ## Usage
 
