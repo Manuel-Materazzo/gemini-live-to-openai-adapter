@@ -11,3 +11,7 @@ export const SERVICE_NAME = 'gemini-live-openai-adapter';
 export const ALLOWED_IPS = process.env.ALLOWED_IPS ? process.env.ALLOWED_IPS.split(',').map(ip => ip.trim()) : [];
 export const TRUSTED_PROXY_IPS = process.env.TRUSTED_PROXY_IPS ? process.env.TRUSTED_PROXY_IPS.split(',').map(ip => ip.trim()) : [];
 export const REVERSE_PROXY_MODE = process.env.REVERSE_PROXY_MODE === 'true';
+
+// Token counting mode: 'estimate' (character heuristic), 'count_tokens' (Gemini API), 'off' (return 0)
+const TOKEN_COUNT_MODE_RAW = (process.env.TOKEN_COUNT_MODE || 'estimate').toLowerCase();
+export const TOKEN_COUNT_MODE = ['estimate', 'count_tokens', 'off'].includes(TOKEN_COUNT_MODE_RAW) ? TOKEN_COUNT_MODE_RAW : 'estimate';

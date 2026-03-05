@@ -1,6 +1,6 @@
 // Utility functions for the Gemini Live to OpenAI Adapter
 
-import {ALLOWED_IPS} from './config.js';
+import {ALLOWED_IPS, TOKEN_COUNT_MODE} from './config.js';
 
 /**
  * Convert OpenAI messages to Live API turns
@@ -150,6 +150,71 @@ export function buildWavHeader(dataLength, sampleRate = 24000, channels = 1, bit
 export function wantsAudioOutput(modalities) {
     if (!modalities || !Array.isArray(modalities)) return false;
     return modalities.some(m => m.toLowerCase() === 'audio');
+}
+
+/**
+ * Estimate token count from text using character heuristic (1 token ≈ 4 characters)
+ * @param {string} text - Text to estimate tokens for
+ * @returns {number} Estimated token count
+ */
+function estimateTokens(text) {
+    if (!text) return 0;
+    return Math.ceil(text.length / 4);
+}
+
+/**
+ * Count prompt tokens using the Gemini countTokens API
+ * @param {Object} ai - GoogleGenAI instance
+ * @param {string} model - Model name
+ * @param {Array} messages - OpenAI-format messages
+ * @returns {Promise<number>} Token count
+ */
+async function countPromptTokensViaAPI(ai, model, messages) {
+    try {
+        const contents = messages.map(msg => ({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{text: msg.role === 'system' ? `[SYSTEM] ${msg.content}` : msg.content}]
+        }));
+        const response = await ai.models.countTokens({model, contents});
+        return response.totalTokens || 0;
+    } catch (e) {
+        console.error('[Token Count] countTokens API failed, falling back to estimate:', e.message);
+        return estimateTokens(messages.map(m => m.content).join(''));
+    }
+}
+
+/**
+ * Calculate token usage for prompt and completion
+ * @param {Object} options - Options
+ * @param {Object} options.ai - GoogleGenAI instance (required for 'count_tokens' mode)
+ * @param {string} options.model - Model name
+ * @param {Array} options.messages - OpenAI-format input messages
+ * @param {string} options.completionText - Generated completion text
+ * @returns {Promise<Object>} Usage object with prompt_tokens, completion_tokens, total_tokens
+ */
+export async function calculateTokenUsage({ai, model, messages, completionText}) {
+    if (TOKEN_COUNT_MODE === 'off') {
+        return {prompt_tokens: 0, completion_tokens: 0, total_tokens: 0};
+    }
+
+    let promptTokens, completionTokens;
+
+    if (TOKEN_COUNT_MODE === 'count_tokens') {
+        promptTokens = await countPromptTokensViaAPI(ai, model, messages);
+        // countTokens doesn't work for Live API output, so estimate completion
+        completionTokens = estimateTokens(completionText);
+    } else {
+        // 'estimate' mode
+        const promptText = messages.map(m => m.content).join('');
+        promptTokens = estimateTokens(promptText);
+        completionTokens = estimateTokens(completionText);
+    }
+
+    return {
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: promptTokens + completionTokens
+    };
 }
 
 /**

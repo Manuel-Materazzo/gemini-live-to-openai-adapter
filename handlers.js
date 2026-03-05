@@ -2,7 +2,7 @@
 
 import crypto from 'crypto';
 import {GoogleGenAI, Modality} from '@google/genai';
-import {convertToLiveAPITurns, validateChatRequest, buildWavHeader, wantsAudioOutput} from './utils.js';
+import {convertToLiveAPITurns, validateChatRequest, buildWavHeader, wantsAudioOutput, calculateTokenUsage} from './utils.js';
 import {DEFAULT_MODEL} from './config.js';
 
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 60000;
@@ -86,7 +86,10 @@ function createStreamingHandler(res, model, requestId, includeAudio) {
             if (includeAudio && fullTranscript) {
                 sendStreamChunk(res, model, requestId, {audio: {transcript: fullTranscript}});
             }
-            sendFinalStreamChunk(res, model, requestId);
+            // Final chunk and [DONE] are sent after token usage is calculated
+        },
+        finalize: (usage) => {
+            sendFinalStreamChunk(res, model, requestId, usage);
             safeWrite(res, 'data: [DONE]\n\n');
             res.end();
         },
@@ -122,7 +125,7 @@ function sendStreamChunk(res, model, requestId, delta) {
  * @param {string} model - Model name
  * @param {string} requestId - Request ID
  */
-function sendFinalStreamChunk(res, model, requestId) {
+function sendFinalStreamChunk(res, model, requestId, usage) {
     const finalChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
@@ -132,7 +135,8 @@ function sendFinalStreamChunk(res, model, requestId) {
             index: 0,
             delta: {},
             finish_reason: 'stop'
-        }]
+        }],
+        usage
     };
     safeWrite(res, `data: ${JSON.stringify(finalChunk)}\n\n`);
 }
@@ -226,7 +230,7 @@ function createLiveSession(ai, options) {
  * @param {string} requestId - Request ID
  * @returns {Object} Formatted response
  */
-function formatTextResponse(content, model, requestId) {
+function formatTextResponse(content, model, requestId, usage) {
     return {
         id: requestId,
         object: 'chat.completion',
@@ -239,7 +243,8 @@ function formatTextResponse(content, model, requestId) {
                 content: content
             },
             finish_reason: 'stop'
-        }]
+        }],
+        usage
     };
 }
 
@@ -251,7 +256,7 @@ function formatTextResponse(content, model, requestId) {
  * @param {string} requestId - Request ID
  * @returns {Object} Formatted response
  */
-function formatAudioResponse(transcript, audioBase64, model, requestId) {
+function formatAudioResponse(transcript, audioBase64, model, requestId, usage) {
     return {
         id: requestId,
         object: 'chat.completion',
@@ -269,7 +274,8 @@ function formatAudioResponse(transcript, audioBase64, model, requestId) {
                 }
             },
             finish_reason: 'stop'
-        }]
+        }],
+        usage
     };
 }
 
@@ -386,14 +392,19 @@ export async function handleChatCompletions(req, res) {
             safeClose();
         }
 
-        // Send response (non-streaming only; streaming is handled by streamHandler)
-        if (!stream) {
+        // Calculate token usage
+        const usage = await calculateTokenUsage({ai, model, messages, completionText: result.transcript});
+
+        // Send response
+        if (stream) {
+            streamHandler.finalize(usage);
+        } else {
             if (includeAudio && result.audioChunks.length > 0) {
                 const audioBase64 = combineAudioChunks(result.audioChunks, audioFormat);
-                const response = formatAudioResponse(result.transcript, audioBase64, model, requestId);
+                const response = formatAudioResponse(result.transcript, audioBase64, model, requestId, usage);
                 res.json(response);
             } else {
-                const response = formatTextResponse(result.transcript, model, requestId);
+                const response = formatTextResponse(result.transcript, model, requestId, usage);
                 res.json(response);
             }
         }
