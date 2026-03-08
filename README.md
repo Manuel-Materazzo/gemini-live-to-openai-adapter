@@ -2,6 +2,7 @@
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Node Version](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)
+[![codecov](https://codecov.io/gh/Manuel-Materazzo/gemini-live-to-openai-adapter/graph/badge.svg?token=FEWR5EI44P)](https://codecov.io/gh/Manuel-Materazzo/gemini-live-to-openai-adapter)
 
 A lightweight Express.js server that provides an OpenAI-compatible API interface for Google's Gemini Live API with native audio, enabling seamless integration with existing OpenAI SDKs and tools. Supports both text transcription and audio output responses.
 
