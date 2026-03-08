@@ -7,7 +7,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "vitest run"
+    "test": "vitest run --coverage --reporter=default --reporter=junit --outputFile=test-results.xml"
+  },
+  "vitest": {
+    "coverage": {
+      "provider": "v8",
+      "reporter": ["lcov", "text"]
+    }
   },
   "dependencies": {
     "@google/genai": "1.29.0",

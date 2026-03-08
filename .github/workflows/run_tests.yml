@@ -1,0 +1,41 @@
+name: Run tests and send coverage report to codecov
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout GitHub Action
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install requirements
+        run: npm install
+
+      - name: Install test and coverage framework
+        run: npm install --save-dev vitest @vitest/coverage-v8
+
+      - name: Run tests
+        run: npx vitest run --coverage --reporter=default --reporter=junit --outputFile=test-results.xml --reporter=junit --outputFile=test-report.junit.xml
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: Manuel-Materazzo/gemini-live-to-openai-adapter
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: Manuel-Materazzo/gemini-live-to-openai-adapter
