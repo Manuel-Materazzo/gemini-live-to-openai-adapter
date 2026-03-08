@@ -25,7 +25,7 @@ jobs:
         run: npm install --save-dev vitest @vitest/coverage-v8
 
       - name: Run tests
-        run: npx vitest run --coverage --reporter=default --reporter=junit --outputFile=test-results.xml --reporter=junit --outputFile=test-report.junit.xml
+        run: npm test
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
